@@ -70,7 +70,9 @@ char dataStrNoDec[MAX_STRING_LEN] = "";
 char tmpStr[MAX_STRING_LEN] = "";
 char endTag[3] = {'<', '/', '\0'};
 int len;
+int timeout_count = 0;
 
+bool fast_lookup = true;
 // Flags to differentiate XML tags from document elements (ie. data)
 boolean tagFlag = false;
 boolean dataFlag = false;
@@ -211,7 +213,7 @@ void loop(void)
       Serial.println(F("Connection failed"));    
       return;
     }
-    Serial.print("Free RAM: "); Serial.println(getFreeRam(), DEC);
+    //Serial.print("Free RAM: "); Serial.println(getFreeRam(), DEC);
     Serial.println(F("-------------------------------------"));
     
     /* Read data until either the connection is closed, or the idle timeout is reached. */ 
@@ -239,8 +241,17 @@ void loop(void)
     }
   
   Serial.println("Waiting . . .");
-  delay(180000); // Get a new update every 3 minutes
+  // The first time through, lookup all temps quickly
+  // After first time through, wait 3 minutes between temperature lookup
+  if (!fast_lookup)
+    delay(180000); // Get a new update every 3 minutes
+    
+  Serial.println("Timeout count:");
+  Serial.println(timeout_count);
+  
   }
+  
+  fast_lookup=false;
  
 }
 
@@ -310,8 +321,8 @@ bool displayConnectionDetails(void)
 float serialEvent(char inChar, int itr) {
 
   // Read a char
-  //   char inChar = client.read();
-  Serial.print(".");
+  // char inChar = client.read();
+  //Serial.print(".");
  
   if (inChar == '<') {
      addChar(inChar, tmpStr);
@@ -323,7 +334,10 @@ float serialEvent(char inChar, int itr) {
 
      if (tagFlag) {      
         //
-        strncpy(tagStr, tmpStr, strlen(tmpStr)+1);
+        //strncpy(tagStr, tmpStr, strlen(tmpStr)+1);
+        for (int i=0; i<MAX_STRING_LEN; i++) {
+          tagStr[i] = tmpStr[i];
+        }
      }
 
      // Clear tmp
@@ -354,12 +368,13 @@ float serialEvent(char inChar, int itr) {
   // If a LF, process the line
   if (inChar == 10 ) {
 
-    Serial.print("tagStr: ");
-    Serial.println(tagStr);
-    // Find specific tags and print data
+    //Serial.print("tagStr: ");
+    //Serial.println(tagStr);
+    ///Find specific tags and print data
     if (matchTag("<temp_f>")) {
-      Serial.print("Temp: ");
+      Serial.println("Temp: ");
       Serial.print(dataStr);
+      Serial.println();
         
       int dec_location;
       int j = 0;
@@ -414,7 +429,7 @@ float serialEvent(char inChar, int itr) {
       }
     }
      
-    Serial.println("Clearing...");
+    //Serial.println("Clearing...");
     // Clear all strings
     clearStr(tmpStr);
     clearStr(tagStr);
@@ -432,7 +447,7 @@ float serialEvent(char inChar, int itr) {
 
 // Function to clear a string
 void clearStr (char* str) {
-  int len = strlen(str);
+  int len = MAX_STRING_LEN;
   for (int c = 0; c < len; c++) {
      str[c] = 0;
   }
@@ -449,12 +464,18 @@ void addChar (char ch, char* str) {
   if (strlen(str) > MAX_STRING_LEN - 2) {
     if (tagFlag) {
       clearStr(tagStr);
-      strcpy(tagStr,tagMsg);
+      //strcpy(tagStr,tagMsg);
+      for (int i=0; i<MAX_STRING_LEN; i++) {
+        tagStr[i] = tagMsg[i];
+      }
     }
     
     if (dataFlag) {
       clearStr(dataStr);
-      strcpy(dataStr,dataMsg);
+      //strcpy(dataStr,dataMsg);
+      for (int i=0; i<MAX_STRING_LEN; i++) {
+        dataStr[i] = dataMsg[i];
+      }
     }
 
     // Clear the temp buffer and flags to stop current processing 
