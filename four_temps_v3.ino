@@ -28,7 +28,6 @@ It might not work on all networks!
 #include <Adafruit_CC3000.h>
 #include <ccspi.h>
 #include <SPI.h>
-#include <string.h>
 #include <SoftwareSerial.h>
 #include "utility/debug.h"
 
@@ -54,6 +53,8 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ
 // What page to grab!
 #define WEBSITE      "api.wunderground.com"
 char WEBPAGE_SUPERIOR[]   = "/api/0d57fb7ea2f1b187/conditions/q/CO/Superior.xml";
+//char WEBPAGE_SUPERIOR[]   = "/api/0d57fb7ea2f1b187/conditions/q/pws:mhoza2.xml";  // Alaska - cold
+//char WEBPAGE_SUPERIOR[]   = "/api/0d57fb7ea2f1b187/conditions/q/pws:inorther33.xml"; // Austrailia - hot
 char WEBPAGE_LINCOLN[]    = "/api/0d57fb7ea2f1b187/conditions/q/CA/Lincoln.xml";
 char WEBPAGE_PARKER[]     = "/api/0d57fb7ea2f1b187/conditions/q/SD/Parker.xml";
 char WEBPAGE_NEWCASTLE[]  = "/api/0d57fb7ea2f1b187/conditions/q/CA/Newcastle.xml";
@@ -350,9 +351,25 @@ float serialEvent(char inChar, int itr) {
      if (tagFlag) {
         // Add tag char to string
         addChar(inChar, tmpStr);
+        
+        int cur_s = 0;
+        for (cur_s=0; tmpStr[cur_s] != '\0'; cur_s++);
+        
+        bool strng_match = true;
+        
+        if (cur_s==2) {
+        
+          for (int i=0; i<3; i++) {
+            if (tmpStr[i] != endTag[i]);
+              strng_match = false;
+          }
+        } else {
+          strng_match = false;
+        }
 
         // Check for </XML> end tag, ignore it
         if ( tagFlag && strcmp(tmpStr, endTag) == 0 ) {
+        //if ( tagFlag && strng_match) {
            clearStr(tmpStr);
            tagFlag = false;
            dataFlag = false;
@@ -371,17 +388,18 @@ float serialEvent(char inChar, int itr) {
     //Serial.print("tagStr: ");
     //Serial.println(tagStr);
     ///Find specific tags and print data
-    if (matchTag("<temp_f>")) {
+    if (matchTag("<temp_f>", 8)) {
       Serial.println("Temp: ");
       Serial.print(dataStr);
       Serial.println();
         
-      int dec_location;
+      int dec_location = 0;
       int j = 0;
         
       // Remove decimal
       for (int i=0; i<MAX_STRING_LEN+1; i++) {
         if (dataStr[i] == '.') {
+        //if (i == 2) {
           Serial.println("Found decimal at:");
           dec_location = i;
           Serial.println(dec_location);
@@ -389,8 +407,44 @@ float serialEvent(char inChar, int itr) {
         } else {
           dataStrNoDec[j] = dataStr[i];
         }
-        j++;
+      j++;
       }
+      
+      // Find the current string length
+      int cur_s = 0;
+      for (cur_s=0; dataStr[cur_s] != '\0'; cur_s++);
+        
+      if (dec_location == 0) {
+        dataStrNoDec[cur_s] = '0';
+      }
+      
+      char my_space[4];
+      
+      for (cur_s=0; dataStrNoDec[cur_s] != '\0'; cur_s++);
+      
+      //Serial.println("Current chars:");
+      //Serial.println(cur_s);
+      
+      if (cur_s == 2) {
+        my_space[0] = ' ';
+        my_space[1] = ' ';
+        my_space[2] = '\0';
+      } else if (cur_s == 3){
+        my_space[0] = ' ';
+        my_space[1] = '\0';
+        my_space[2] = '\0';
+      } else {
+        my_space[0] = '\0';
+        my_space[1] = '\0';
+        my_space[2] = '\0';
+      }
+      
+      
+      //for (int i=0; i<MAX_STRING_LEN; i++) {
+      //  Serial.println(i);
+      //  Serial.println(dataStrNoDec[i]);
+      //}
+        
         
       Serial.println(dataStrNoDec);
       Serial.println("Decimal location:");
@@ -398,31 +452,27 @@ float serialEvent(char inChar, int itr) {
         
       if (itr == 0) {
         mySerialA.write('v'); //Reset the display - this forces the cursor to return to the beginning 
-        if (dec_location == 2) // Figure out where the decimal is located.  Temps >100 don't need a space
-          mySerialA.print(" ");
+        mySerialA.print(my_space);
         mySerialA.print(dataStrNoDec);
         mySerialA.write(0x77);  // Decimal, colon, apostrophe control command
         mySerialA.write((1<<2) ); // Turns tenth place decimal
       } else if (itr == 1) {
         mySerialB.write('v'); //Reset the display - this forces the cursor to return to the beginning 
-        if (dec_location == 2) // Figure out where the decimal is located.  Temps >100 don't need a space
-          mySerialB.print(" ");
+        mySerialB.print(my_space);
         mySerialB.print(dataStrNoDec);
         mySerialB.write(0x77);  // Decimal, colon, apostrophe control command
         mySerialB.write((1<<2) ); // Turns tenth place decimal
         
       } else if (itr == 2) {
         mySerialC.write('v'); //Reset the display - this forces the cursor to return to the beginning 
-        if (dec_location == 2) // Figure out where the decimal is located.  Temps >100 don't need a space
-          mySerialC.print(" ");
+        mySerialC.print(my_space);
         mySerialC.print(dataStrNoDec);
         mySerialC.write(0x77);  // Decimal, colon, apostrophe control command
         mySerialC.write((1<<2) ); // Turns tenth place decimal
         
       } else if (itr == 3) {
         mySerialD.write('v'); //Reset the display - this forces the cursor to return to the beginning 
-        if (dec_location == 2) // Figure out where the decimal is located.  Temps >100 don't need a space
-          mySerialD.print(" ");
+        mySerialD.print(my_space);
         mySerialD.print(dataStrNoDec);
         mySerialD.write(0x77);  // Decimal, colon, apostrophe control command
         mySerialD.write((1<<2) ); // Turns tenth place decimal
@@ -434,6 +484,7 @@ float serialEvent(char inChar, int itr) {
     clearStr(tmpStr);
     clearStr(tagStr);
     clearStr(dataStr);
+    clearStr(dataStrNoDec);
 
     // Clear Flags
     tagFlag = false;
@@ -449,19 +500,24 @@ float serialEvent(char inChar, int itr) {
 void clearStr (char* str) {
   int len = MAX_STRING_LEN;
   for (int c = 0; c < len; c++) {
-     str[c] = 0;
+     str[c] = '\0';
   }
 }
+
 
 //Function to add a char to a string and check its length
 void addChar (char ch, char* str) {
   char *tagMsg  = "<TRUNCATED_TAG>";
   char *dataMsg = "-TRUNCATED_DATA-";
+  
+  int s = 0;
+  for (s=0; str[s] != '\0'; s++);
 
   // Check the max size of the string to make sure it doesn't grow too
   // big.  If string is beyond MAX_STRING_LEN assume it is unimportant
   // and replace it with a warning message.
-  if (strlen(str) > MAX_STRING_LEN - 2) {
+  //if (strlen(str) > MAX_STRING_LEN - 2) {
+  if (s > MAX_STRING_LEN - 2) {
     if (tagFlag) {
       clearStr(tagStr);
       //strcpy(tagStr,tagMsg);
@@ -485,15 +541,30 @@ void addChar (char ch, char* str) {
 
   } else {
     // Add char to string
-    str[strlen(str)] = ch;
+    //str[strlen(str)] = ch;
+    str[s] = ch;
   }
 }
 
 // Function to check the current tag for a specific string
-boolean matchTag (char* searchTag) {
-  if ( strcmp(tagStr, searchTag) == 0 ) {
-    return true;
-  } else {
-    return false;
+boolean matchTag (char* searchTag, int tag_length) {
+  //if ( strcmp(tagStr, searchTag) == 0 ) {
+  //  return true;
+  //} else {
+  //  return false;
+  //}
+  
+  bool match = false;
+  
+  for (int i = 0; i<tag_length; i++) {
+    if (tagStr[i] == searchTag[i]) {
+      match = true;
+    } else {
+      match = false;
+      break;
+    }
   }
+  
+  return match;
+  
 }
