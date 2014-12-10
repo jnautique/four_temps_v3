@@ -64,6 +64,10 @@ char WEBPAGE_NEWCASTLE[]  = "/api/0d57fb7ea2f1b187/conditions/q/CA/Newcastle.xml
 // Max string length may have to be adjusted depending on data to be extracted
 #define MAX_STRING_LEN  20
 
+// LED constants
+#define LEDBLINK_PIN	13 		// I/O pin connected to LED
+#define LEDBLINK_MS		1000	// Blink rate (in ms)
+
 // Setup vars
 char tagStr[MAX_STRING_LEN] = "";
 char dataStr[MAX_STRING_LEN] = "";
@@ -98,6 +102,9 @@ SoftwareSerial mySerialD(8, A3); // RX, TX
 
 void setup(void)
 {
+
+  // Set LEDBLINK pin to output
+  pinMode(LEDBLINK_PIN, OUTPUT);
   
   mySerialA.begin(9600);
   mySerialB.begin(9600);
@@ -135,6 +142,9 @@ void loop(void)
     
     int timeout=0;
     bool timeout_assert = false;
+ 
+ 	// Blink LED
+ 	ledBlink();
   
     Serial.print(F("\nAttempting to connect to ")); Serial.println(WLAN_SSID);
     if (!cc3000.connectToAP(WLAN_SSID, WLAN_PASS, WLAN_SECURITY)) {
@@ -574,3 +584,27 @@ boolean matchTag (char* searchTag, int tag_length) {
   return match;
   
 }
+
+/////////////////////////////////////////////////////////////////////
+// LED Heartbeat function by Allen C. Huffman (www.appleause.com)
+/////////////////////////////////////////////////////////////////////
+void ledBlink()
+{
+  static unsigned int  ledStatus = LOW;  // Last set LED mode.
+  static unsigned long ledBlinkTime = 0; // LED blink time.
+
+  // LED blinking heartbeat. Yes, we are alive.
+  // For explanation, see:
+  // http://playground.arduino.cc/Code/TimingRollover
+  if ( (long)(millis()-ledBlinkTime) >= 0 )
+  {
+    // Toggle LED.
+    ledStatus = (ledStatus==HIGH ? LOW : HIGH);
+
+    // Set LED pin status.
+    digitalWrite(LEDBLINK_PIN, ledStatus);
+
+    // Reset "next time to toggle" time.
+    ledBlinkTime = millis()+LEDBLINK_MS;
+  }
+} // end of ledBlink()
