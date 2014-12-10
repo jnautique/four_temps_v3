@@ -72,6 +72,7 @@ char tmpStr[MAX_STRING_LEN] = "";
 char endTag[3] = {'<', '/', '\0'};
 int len;
 int timeout_count = 0;
+int iterations = 0;
 
 bool fast_lookup = true;
 // Flags to differentiate XML tags from document elements (ie. data)
@@ -242,6 +243,7 @@ void loop(void)
     }
   
   Serial.println("Waiting . . .");
+  
   // The first time through, lookup all temps quickly
   // After first time through, wait 3 minutes between temperature lookup
   if (!fast_lookup)
@@ -249,6 +251,10 @@ void loop(void)
     
   Serial.println("Timeout count:");
   Serial.println(timeout_count);
+  iterations++;
+  Serial.println("Iteration count:");
+  Serial.println(iterations);
+  
   
   }
   
