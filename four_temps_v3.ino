@@ -65,7 +65,7 @@ char WEBPAGE_NEWCASTLE[]  = "/api/0d57fb7ea2f1b187/conditions/q/CA/Newcastle.xml
 #define MAX_STRING_LEN  20
 
 // LED constants
-#define LEDBLINK_PIN	13 		// I/O pin connected to LED
+#define LEDBLINK_PIN	7 		// I/O pin connected to LED
 #define LEDBLINK_MS		1000	// Blink rate (in ms)
 
 // Setup vars
@@ -77,6 +77,7 @@ char endTag[3] = {'<', '/', '\0'};
 int len;
 int timeout_count = 0;
 int iterations = 0;
+static unsigned int  ledStatus = LOW;  // Last set LED mode.
 
 bool fast_lookup = true;
 // Flags to differentiate XML tags from document elements (ie. data)
@@ -143,8 +144,13 @@ void loop(void)
     int timeout=0;
     bool timeout_assert = false;
  
- 	// Blink LED
- 	ledBlink();
+ 	  // Blink LED
+ 	  // Toggle LED.
+    ledStatus = (ledStatus==HIGH ? LOW : HIGH);
+
+    // Set LED pin status.
+    digitalWrite(LEDBLINK_PIN, ledStatus);
+ 	  //ledBlink();
   
     Serial.print(F("\nAttempting to connect to ")); Serial.println(WLAN_SSID);
     if (!cc3000.connectToAP(WLAN_SSID, WLAN_PASS, WLAN_SECURITY)) {
@@ -280,11 +286,18 @@ void loop(void)
 
 void listSSIDResults(void)
 {
-  uint8_t valid, rssi, sec, index;
+//  uint8_t valid, rssi, sec, index;
+  uint8_t valid, rssi, sec;
+  uint32_t index;
   char ssidname[33]; 
 
-  index = cc3000.startSSIDscan();
+//  index = cc3000.startSSIDscan();
+  if (!cc3000.startSSIDscan(&index)) {
+    Serial.println(F("SSID scan failed!"));
+    return;
+  }
 
+//  Serial.print(F("Networks found: ")); Serial.println(&index);
   Serial.print(F("Networks found: ")); Serial.println(index);
   Serial.println(F("================================================"));
 
