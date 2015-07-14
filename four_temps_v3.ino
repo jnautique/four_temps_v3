@@ -25,6 +25,7 @@ SmartConfig is still beta and kind of works but is not fully vetted!
 It might not work on all networks!
 */
 
+#include <avr/wdt.h>
 #include <Adafruit_CC3000.h>
 #include <ccspi.h>
 #include <SPI.h>
@@ -84,6 +85,12 @@ bool fast_lookup = true;
 boolean tagFlag = false;
 boolean dataFlag = false;
 
+volatile int counter;      // Count number of times ISR is called.
+volatile int countmax = 30; // Arbitrarily selected 3 for this example.
+                          // Timer expires after about 24 secs if
+                          // 8 sec interval is selected below.
+
+
 /**************************************************************************/
 /*!
     @brief  Sets up the HW and the CC3000 module (called automatically
@@ -139,7 +146,10 @@ void setup(void)
 void loop(void)
 {
   
+  
   for (int i=0; i<4; i++) {
+    
+    watchdogEnable(); // set up watchdog timer in interrupt-only mode
     
     int timeout=0;
     bool timeout_assert = false;
@@ -151,7 +161,7 @@ void loop(void)
     // Set LED pin status.
     digitalWrite(LEDBLINK_PIN, ledStatus);
  	  //ledBlink();
-  
+    
     Serial.print(F("\nAttempting to connect to ")); Serial.println(WLAN_SSID);
     if (!cc3000.connectToAP(WLAN_SSID, WLAN_PASS, WLAN_SECURITY)) {
       Serial.println(F("Failed!"));
@@ -159,7 +169,6 @@ void loop(void)
     }
      
     Serial.println(F("Connected!"));
-    
     /* Wait for DHCP to complete */
     Serial.println(F("Request DHCP"));
     while (!cc3000.checkDHCP() && !timeout_assert){
@@ -253,6 +262,8 @@ void loop(void)
     Serial.println(F("\n\nDisconnecting"));
     cc3000.disconnect();
     
+    // Turn off the WDT
+    wdt_disable();
     
     if (timeout_assert) {
       Serial.println("#### Timeout Asserted ####");
@@ -263,7 +274,7 @@ void loop(void)
   // The first time through, lookup all temps quickly
   // After first time through, wait 3 minutes between temperature lookup
   if (!fast_lookup)
-    delay(180000); // Get a new update every 3 minutes
+    delay(240000); // Get a new update every 3 minutes
     
   Serial.println("Timeout count:");
   Serial.println(timeout_count);
@@ -621,3 +632,56 @@ void ledBlink()
     ledBlinkTime = millis()+LEDBLINK_MS;
   }
 } // end of ledBlink()
+
+
+void watchdogEnable()
+{
+ counter=0;
+ cli();                              // disable interrupts
+
+ MCUSR = 0;                          // reset status register flags
+
+                                     // Put timer in interrupt-only mode:                                        
+ WDTCSR |= 0b00011000;               // Set WDCE (5th from left) and WDE (4th from left) to enter config mode,
+                                     // using bitwise OR assignment (leaves other bits unchanged).
+ WDTCSR =  0b01000000 | 0b100001;    // set WDIE (interrupt enable...7th from left, on left side of bar)
+                                     // clr WDE (reset enable...4th from left)
+                                     // and set delay interval (right side of bar) to 8 seconds,
+                                     // using bitwise OR operator.
+
+ sei();                              // re-enable interrupts
+ //wdt_reset();                      // this is not needed...timer starts without it
+
+ // delay interval patterns:
+ //  16 ms:     0b000000
+ //  500 ms:    0b000101
+ //  1 second:  0b000110
+ //  2 seconds: 0b000111
+ //  4 seconds: 0b100000
+ //  8 seconds: 0b100001
+
+}
+
+ISR(WDT_vect) // watchdog timer interrupt service routine
+{
+ counter+=1;
+
+ if (counter < countmax)
+ {
+   wdt_reset(); // start timer again (still in interrupt-only mode)
+ }
+ else             // then change timer to reset-only mode with short (16 ms) fuse
+ {
+   
+   MCUSR = 0;                          // reset flags
+
+                                       // Put timer in reset-only mode:
+   WDTCSR |= 0b00011000;               // Enter config mode.
+   WDTCSR =  0b00001000 | 0b000000;    // clr WDIE (interrupt enable...7th from left)
+                                       // set WDE (reset enable...4th from left), and set delay interval
+                                       // reset system in 16 ms...
+                                       // unless wdt_disable() in loop() is reached first
+
+   //wdt_reset(); // not needed
+ }
+}
