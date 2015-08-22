@@ -86,7 +86,7 @@ boolean tagFlag = false;
 boolean dataFlag = false;
 
 volatile int counter;      // Count number of times ISR is called.
-volatile int countmax = 30; // Arbitrarily selected 3 for this example.
+volatile int countmax = 5; // Arbitrarily selected 3 for this example.
                           // Timer expires after about 24 secs if
                           // 8 sec interval is selected below.
 
@@ -128,7 +128,8 @@ void setup(void)
   Serial.begin(115200);
   Serial.println(F("Hello, CC3000!\n")); 
 
-  Serial.print("Free RAM: "); Serial.println(getFreeRam(), DEC);
+  Serial.print(F("Free RAM: ")); 
+  Serial.println(getFreeRam(), DEC);
   
   /* Initialise the module */
   Serial.println(F("\nInitializing..."));
@@ -146,6 +147,7 @@ void setup(void)
 void loop(void)
 {
   
+  fast_lookup=false;
   
   for (int i=0; i<4; i++) {
     
@@ -187,7 +189,7 @@ void loop(void)
       timeout++;
       if (timeout > 32) {
         timeout_assert = true;
-        Serial.println("Timeout");
+        Serial.println(F("Timeout"));
       }
     }
     
@@ -203,7 +205,7 @@ void loop(void)
       timeout++;
       if (timeout > 320) {
         timeout_assert = true;
-        Serial.println("Timeout");
+        Serial.println(F("Timeout"));
       }
     }
     
@@ -215,22 +217,22 @@ void loop(void)
       if (i == 0) {
         www.fastrprint(WEBPAGE_SUPERIOR);
         Serial.println();
-        Serial.println("Superior");
+        Serial.println(F("Superior"));
       } else if (i == 1) {
         www.fastrprint(WEBPAGE_LINCOLN);
         Serial.println();
-        Serial.println("Lincoln");
+        Serial.println(F("Lincoln"));
       } else if (i == 2) {
         www.fastrprint(WEBPAGE_NEWCASTLE);
         Serial.println();
-        Serial.println("Newcastle");
+        Serial.println(F("Newcastle"));
       } else if (i == 3) {
         www.fastrprint(WEBPAGE_PARKER);
         Serial.println();
-        Serial.println("Parker");
+        Serial.println(F("Parker"));
       } else {
         www.fastrprint(WEBPAGE_PARKER);
-        Serial.println("Default - Parker");
+        Serial.println(F("Default - Parker"));
       }
       www.fastrprint(F(" HTTP/1.1\r\n"));
       www.fastrprint(F("Host: ")); www.fastrprint(WEBSITE); www.fastrprint(F("\r\n"));
@@ -266,26 +268,26 @@ void loop(void)
     wdt_disable();
     
     if (timeout_assert) {
-      Serial.println("#### Timeout Asserted ####");
+      Serial.println(F("#### Timeout Asserted ####"));
     }
   
-  Serial.println("Waiting . . .");
+  Serial.println(F("Waiting . . ."));
   
   // The first time through, lookup all temps quickly
   // After first time through, wait 3 minutes between temperature lookup
   if (!fast_lookup)
     delay(240000); // Get a new update every 3 minutes
     
-  Serial.println("Timeout count:");
+  Serial.println(F("Timeout count:"));
   Serial.println(timeout_count);
   iterations++;
-  Serial.println("Iteration count:");
+  Serial.println(F("Iteration count:"));
   Serial.println(iterations);
   
   
   }
   
-  fast_lookup=false;
+  //fast_lookup=false;
  
 }
 
@@ -429,7 +431,7 @@ float serialEvent(char inChar, int itr) {
     //Serial.println(tagStr);
     ///Find specific tags and print data
     if (matchTag("<temp_f>", 8)) {
-      Serial.println("Temp: ");
+      Serial.println(F("Temp: "));
       Serial.print(dataStr);
       Serial.println();
         
@@ -440,7 +442,7 @@ float serialEvent(char inChar, int itr) {
       for (int i=0; i<MAX_STRING_LEN+1; i++) {
         if (dataStr[i] == '.') {
         //if (i == 2) {
-          Serial.println("Found decimal at:");
+          Serial.println(F("Found decimal at:"));
           dec_location = i;
           Serial.println(dec_location);
           j--;
@@ -487,7 +489,7 @@ float serialEvent(char inChar, int itr) {
         
         
       Serial.println(dataStrNoDec);
-      Serial.println("Decimal location:");
+      Serial.println(F("Decimal location:"));
       Serial.println(dec_location);
         
       if (itr == 0) {
